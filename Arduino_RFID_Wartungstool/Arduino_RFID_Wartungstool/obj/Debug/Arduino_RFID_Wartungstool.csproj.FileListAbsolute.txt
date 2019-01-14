@@ -1,0 +1,10 @@
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\bin\Debug\Arduino_RFID_Wartungstool.exe.config
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\bin\Debug\Arduino_RFID_Wartungstool.exe
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\bin\Debug\Arduino_RFID_Wartungstool.pdb
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.csprojAssemblyReference.cache
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.Form1.resources
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.Properties.Resources.resources
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.csproj.GenerateResource.cache
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.csproj.CoreCompileInputs.cache
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.exe
+C:\Users\Paape\source\repos\Arduino_RFID_Wartungstool\Arduino_RFID_Wartungstool\obj\Debug\Arduino_RFID_Wartungstool.pdb
