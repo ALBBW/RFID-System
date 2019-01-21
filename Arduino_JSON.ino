@@ -1,44 +1,63 @@
-//#include <deprecated.h>
 #include <MFRC522.h>
-//#include <MFRC522Extended.h>
-//#include <require_cpp11.h>
 #include <Ethernet.h>
 #include "Formater.h"
 //--------------------#include <ArduinoJson.h>
 
-String message;
+//String message;
 int keycode[200];
 char ascii[200];
 int counter = 0;
 bool writer = false;
+bool disabled = false;
 //bool isende = false;
 String text = "";
 String test = "";
+String rfidcode = "";
 
 //Ethernet Variablen
-byte ip[] = { 192, 168, 1, 42};
-byte subnet[] = { 255, 255, 255, 0};
-byte mac[] = { 0xAD, 0xBE, 0xFE, 0xED};
+byte ip[] = { 192, 168, 1, 42};                   //IP-Adresse des Arduino
+String ipstr = "192.168.1.42";
+byte subnet[] = { 255, 255, 255, 0};              //Subnetzmaske des Arduino
+byte mac[] = { 0xAD, 0xBE, 0xFE, 0xED};           //Mac-Adresse des Arduino
 
-EthernetClient client = EthernetClient(42000);
-IPAddress ipaddr(10, 122, 122, 193);
+//RFID Variablen
+#define RST_PIN 9                                 //Reset Pin fuers RFID Board
+#define SS_PIN 10                                 //Kommunikation Pin fuers RFID Board
+#define NEW_UID {0xDE, 0xAD, 0xBE, 0xEF}
+MFRC522 rfidModul(SS_PIN, RST_PIN);
+MFRC522::MIFARE_Key key;
+
+EthernetClient client = EthernetClient(42000);    
+IPAddress ipaddr(10, 122, 122, 193);               //IP-Adresse des Servers
 //10.122.122.193
 
 void setup() 
 {
-  Serial.begin(9600);
-  Serial.println("Arduino RFID-Module @ " + (String)ip[0] + "." + (String)ip[1] + "." + (String)ip[2] + "." + (String)ip[3]);
-  if(Ethernet.begin(mac) == 0)
+  Serial.begin(9600);                                                                                                             //Starte Serielle Ausgabe
+  Serial.println("Arduino RFID-Module @ " + (String)ip[0] + "." + (String)ip[1] + "." + (String)ip[2] + "." + (String)ip[3]);     //Ausgabe des Modulnamens + IP-Adresse
+  Serial.println("Initilaize RFID-Module");
+  SPI.begin();                                                                                                                    //Starte SPI
+  rfidModul.PCD_Init();                                                                                                           //Initialisiere RFID-Modul
+  for(byte i = 0; i < 6; i++)
   {
-    Serial.println("DHCP Fail");
-    Ethernet.begin(mac, ip);
+    key.keyByte[i] = 0xFF;
   }
-  Serial.println("Initialize Shield");
-  delay(1000);
-  Serial.println("connecting . . .");
-  if(client.connected())
+  dump_byte_array(key.keyByte, MFRC522::MF_KEY_SIZE);
+  Serial.println("RFID-Module ready");
+  if(Ethernet.begin(mac) == 0)                              //Starte Ethernet und pruefe Zeitgleich ob Verbindung erfolgreich
   {
-    Serial.println("Connected");
+    Serial.println("DHCP Fail");                            //Falls Verbindung nicht erfolgreich ist eine IP zuordnung mitteles DHCP Fehlgeschlagen
+    Ethernet.begin(mac, ip);                                //dann versuche Ethernet erneut zu starten diesmal wird IP mit uebergeben
+  }
+  Serial.println("Initialize Shield");                      //Ausgabe das er Initialisiert
+  delay(1000);                                              //1 Sekunde Initialisierungszeit wird bereitgestellt
+  Serial.println("connecting . . .");                       //Ausgabe das er versucht eine verbindung aufzubauen
+  if(client.connected())                                    //Pruefen ob verbindung hergestellt wurde
+  {
+    Serial.println("Connected");                            //Ausgabe wenn Verbindung erfolgreich
+    /*
+     * Sende Request an Server
+     */
     client.write((byte)0x62);
     client.write((byte)0xff);
     client.write((byte)0x03);
@@ -50,34 +69,80 @@ void setup()
   }
   else
   {
-    Serial.println("COnnection failed!");
+    Serial.println("Connection failed!");                     //Ausgabe wenn Verbindung nicht erfolgreich ist
   }
 }
 
 void loop() 
 {  
-  while(Serial.available() > 0)
-  {
+  delay(50);
+  
+  while(Serial.available() > 0)      
+  {                                  
     keycode[counter] = Serial.read();
     test = Serial.read();
     KeytoChar();
     counter++;
+  }        
+
+  if(text == "s")
+  {
+    if(!disabled)
+    {
+      disabled = true;
+      Serial.println("Gerät wurde Deaktiviert");
+      text = "";
+    }
+    else
+    {
+      disabled = false;
+      Serial.println("Gerät wurde Aktiviert");
+      text = "";
+    }
   }
+  else
+  {
+    text = "";
+  }
+  
+  if(disabled)
+  {
+    return;
+  }
+  
+  Serial.println("warte bis Karte gelesen");
+  
+  /*
+   * Pruefe ob Karte gelesen wurde und ob es eine neue Karte ist
+   */
+  if(!rfidModul.PICC_IsNewCardPresent())
+  {
+    return;
+  }
+
+  if(!rfidModul.PICC_ReadCardSerial())
+  {
+    return;
+  }
+
+  Serial.print(F("Card UID: "));
+  dump_byte_array(rfidModul.uid.uidByte, rfidModul.uid.size);       //Methode zum Auslesen des RFID-Chips
+  Serial.println(rfidcode);                                         //Gebe RFID-Nummer Seriell Aus
 
   if(writer == true)                                    
   {
-    String JSONText = MakeJson(text);               //Mache input zu JSON
-    if(JSONText != "")                              //ist JSON nicht leer
+    String JSONText = MakeJson(rfidcode, ipstr);               //Mache RFID-Nummer zu JSON
+    if(JSONText != "")                                  //ist JSON nicht leer
     {
-      int msgLength = CheckJsonLength(JSONText);    //Ermittel die Laenge des JSON Strings
-      byte message[msgLength];                   //Deklariere Unsigned 8 Bit Integer Array mit der Laenge des JSON Strings
+      int msgLength = CheckJsonLength(JSONText);        //Ermittel die Laenge des JSON Strings
+      byte message[msgLength];                          //Deklariere Unsigned 8 Bit Byte Array mit der Laenge des JSON Strings
       for(int i = 0; i < msgLength; i++)
       {
-        message[i] = (byte)JSONText[i];          //Wandle JSON String zu 8 Bit Int
+        message[i] = (byte)JSONText[i];                 //Wandle JSON String zu Byte um
       }
       for(int i = 0; i < msgLength; i++)
       {
-        client.write(message[i]);                   //Sende die einzelnen bytes
+        client.write(message[i]);                       //Sende die einzelnen Bytes
       }
      }
      Serial.println("");  
@@ -129,5 +194,16 @@ void KeytoChar()
       }
       zaehler++;
     }
+  }
+}
+
+void dump_byte_array(byte *buffer, byte bufferSize)
+{
+  for(byte i = 0; i < bufferSize; i++)
+  {
+    //Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    //Serial.print(buffer[i], HEX);
+    rfidcode += buffer[i] < 0x10 ? " 0" : " ";
+    rfidcode += buffer[i], HEX;
   }
 }

@@ -1,4 +1,4 @@
-String MakeJson(String content)
+String MakeJson(String content, String ipaddrs)
 {
   if(content == "")
   {
@@ -36,7 +36,7 @@ String MakeJson(String content)
   }
   words[selwrd] = currword;
   Serial.println(currword);
-  String JsonStr = "{\n\"Identifier\": \"Arduino\"\n\"Content\": [\n";
+  String JsonStr = "{\n\"Identifier\": \"Arduino\"\n\"IP-Adress\": \"" + ipaddrs + "\"\"Content\": [\n";
   for(int i = 0; i < leers; i++)
   {
     JsonStr += "\"" + words[i] + "\",\n";
