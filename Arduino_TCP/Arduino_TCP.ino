@@ -7,7 +7,16 @@
  */
 
 #include <Ethernet.h>
+#include <MFRC522.h>
 #include <SPI.h>
+
+#define RST_PIN 8
+#define SS_PIN 9
+
+byte rfidCode[4];
+String rfid = "";
+bool isini = false;
+
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };      //Mac Adresse des Arduino
 IPAddress ip(169, 254, 108, 237);                         //IP-Adresse des Arduino
@@ -20,6 +29,7 @@ bool issenden = false;
 void setup() 
 {
   Serial.begin(9600);                                     //Starten der Seriellen Ausgabe
+  SPI.begin();
   Ethernet.begin(mac, ip);                                //Starten des Ethernets
   client.setConnectionTimeout(1);
   ncgt:
@@ -36,21 +46,53 @@ void setup()
     {
       Serial.println("Ethernet Kabel nicht angeschlossen");
     }
-    goto ncgt; //Da ist nichts bitte weiter gehen
+    //goto ncgt; //Da ist nichts bitte weiter gehen
   }
   Serial.println("Verbunden");
 }
 
 void loop() 
 {
-  delay(50);
-  /*
-   * Hier RFID Auslesen Implementieren
-   */
-  
   if(!issenden)
   {
-    String rfid = "420-111-215";
+    if(rfid == "")
+    {
+      MFRC522 mfrc522(SS_PIN, RST_PIN);
+      MFRC522::MIFARE_Key key;
+      mfrc522.PCD_Init();
+      while(rfid == "")
+      {
+        notread:
+  
+        if(!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial())
+        {
+          delay(50);
+          Serial.println("Warte auf RFID");
+          goto notread;
+        }
+  
+        Serial.print(F("Card UID:"));
+        byte counter = 0;
+        for(byte i = 0; i < mfrc522.uid.size; i++)
+        {
+          Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+          Serial.print(mfrc522.uid.uidByte[i], HEX);
+          rfid += (String)mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ";
+          rfid += (String)mfrc522.uid.uidByte[i], HEX;
+          rfidCode[i] = rfid.toInt();
+          rfid = "";
+          counter++;
+          Serial.println();
+        }
+        for(int i = 0; i < counter; i++)
+        {
+          rfid += (String)rfidCode[i];
+        }
+      }
+    }
+  
+  
+
     String ipstr = (String)ip[0] + "." + (String)ip[1] + "." + (String)ip[2] + "." + (String)ip[3];   //IP-Adresse des Arduino zu String fuer JSON
     
   
@@ -67,8 +109,9 @@ void loop()
            jsonStr += "\t\t\"uid\": \"" + rfid + "\"\n";
            jsonStr += "\t}\n";
            jsonStr += "]";
-
+    Serial.println(jsonStr);
     client.println(jsonStr);                          //Senden des JSON Strings
+    rfid = "";
     issenden = true;
   }
   else
@@ -78,9 +121,9 @@ void loop()
          
   
   
-  if(!client.available())
+  /*while(!client.available())
   {
-    return;
+    
   }
   int streamLength = client.available();            //Uebernehme laenge des erhaltenen Streams
   char readStream[streamLength];                    //Deklariere char Array mit laenge der Stream laenge
@@ -93,6 +136,6 @@ void loop()
   {
     empfangen += readStream[i];                     //Fuege chars zu String zusammen
   }
-  Serial.println(empfangen);                        //Gebe erhaltene antwort Seriell aus
+  Serial.println(empfangen);                        //Gebe erhaltene antwort Seriell aus*/
   delay(5000);                                      //Warte 5 Sekunden
 }
